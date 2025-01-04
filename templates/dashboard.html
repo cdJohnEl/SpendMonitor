@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Finance Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Finance Tracker">
+                    Finance Tracker
+                </div>
+                <ul>
+                    <li><a href="{{ url_for('login') }}">Logout</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <div class="dashboard">
+        <aside class="sidebar">
+            <ul>
+                <li><a href="#upload-section">Upload Receipt</a></li>
+                <li><a href="#receipts-section">Your Receipts</a></li>
+            </ul>
+        </aside>
+        <main class="main-content">
+            <h2>Dashboard</h2>
+            <section id="upload-section" class="card">
+                <h3>Upload Receipt</h3>
+                <form id="upload-form">
+                    <input type="file" id="receipt-file" accept="image/*" required>
+                    <button type="submit" class="btn btn-primary">Scan Receipt</button>
+                </form>
+            </section>
+            <section id="result-section" class="card" style="display: none;">
+                <h3>Scan Result</h3>
+                <div id="scan-result"></div>
+                <button id="save-button" class="btn btn-primary">Save Receipt</button>
+            </section>
+            <section id="receipts-section" class="card">
+                <h3>Your Receipts</h3>
+                <div id="receipts-list"></div>
+            </section>
+        </main>
+    </div>
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Finance Tracker. All rights reserved.</p>
+        </div>
+    </footer>
+    <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>
+</body>
+</html>
+

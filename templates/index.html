@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Finance Tracker</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
+</head>
+<body>
+    <header>
+        <div class="container">
+            <nav>
+                <div class="logo">
+                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Finance Tracker">
+                    Finance Tracker
+                </div>
+                <ul>
+                    <li><a href="{{ url_for('index') }}">Home</a></li>
+                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                    <li><a href="{{ url_for('signup') }}">Sign Up</a></li>
+                </ul>
+            </nav>
+        </div>
+    </header>
+    <main>
+        <div class="container">
+            <section class="hero">
+                <h2>Welcome to Finance Tracker</h2>
+                <p>Track your expenses easily by scanning your receipts!</p>
+                <a href="{{ url_for('signup') }}" class="btn btn-primary">Get Started</a>
+            </section>
+            <section class="features">
+                <div class="feature">
+                    <h3>Scan Receipts</h3>
+                    <p>Quickly capture and digitize your receipts with our advanced scanning technology.</p>
+                </div>
+                <div class="feature">
+                    <h3>Track Expenses</h3>
+                    <p>Categorize and monitor your spending habits with intuitive tracking tools.</p>
+                </div>
+                <div class="feature">
+                    <h3>Generate Reports</h3>
+                    <p>Get insights into your financial health with detailed reports and analytics.</p>
+                </div>
+            </section>
+        </div>
+    </main>
+    <footer>
+        <div class="container">
+            <p>&copy; 2024 Finance Tracker. All rights reserved.</p>
+        </div>
+    </footer>
+</body>
+</html>
+
