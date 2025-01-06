@@ -12,8 +12,8 @@
         <div class="container">
             <nav>
                 <div class="logo">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Finance Tracker">
-                    Finance Tracker
+                    <!-- <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Spend Monitor"> -->
+                    <h1>🔎SpendMonitor</h1>
                 </div>
                 <ul>
                     <li><a href="{{ url_for('login') }}">Logout</a></li>
@@ -24,33 +24,60 @@
     <div class="dashboard">
         <aside class="sidebar">
             <ul>
+                <li><a href="#summary-section">Summary</a></li>
                 <li><a href="#upload-section">Upload Receipt</a></li>
-                <li><a href="#receipts-section">Your Receipts</a></li>
+                <li><a href="#transactions-section">Recent Transactions</a></li>
             </ul>
         </aside>
         <main class="main-content">
-            <h2>Dashboard</h2>
+            <section id="summary-section" class="card">
+                <h2>Financial Summary</h2>
+                <div class="summary-grid">
+                    <div class="summary-item">
+                        <h3>Balance</h3>
+                        <p class="balance">₦{{ "%.2f"|format(balance) }}</p>
+                    </div>
+                    <div class="summary-item">
+                        <h3>Total Income</h3>
+                        <p class="income">₦{{ "%.2f"|format(total_income) }}</p>
+                    </div>
+                    <div class="summary-item">
+                        <h3>Total Expenses</h3>
+                        <p class="expenses">₦{{ "%.2f"|format(total_expenses) }}</p>
+                    </div>
+                </div>
+                <a href="{{ url_for('download_summary') }}" class="btn btn-secondary">Download Summary</a>
+            </section>
             <section id="upload-section" class="card">
-                <h3>Upload Receipt</h3>
+                <h2>Upload Receipt</h2>
                 <form id="upload-form">
                     <input type="file" id="receipt-file" accept="image/*" required>
                     <button type="submit" class="btn btn-primary">Scan Receipt</button>
                 </form>
             </section>
             <section id="result-section" class="card" style="display: none;">
-                <h3>Scan Result</h3>
+                <h2>Scan Result</h2>
                 <div id="scan-result"></div>
-                <button id="save-button" class="btn btn-primary">Save Receipt</button>
+                <div class="form-group">
+                    <label for="transaction-type">Transaction Type:</label>
+                    <select id="transaction-type" required>
+                        <option value="">Select type</option>
+                        <option value="income">Income</option>
+                        <option value="expense">Expense</option>
+                    </select>
+                </div>
+                <button id="save-button" class="btn btn-primary">Save Transaction</button>
             </section>
-            <section id="receipts-section" class="card">
-                <h3>Your Receipts</h3>
-                <div id="receipts-list"></div>
+            <section id="transactions-section" class="card">
+                <h2>Recent Transactions</h2>
+                <div id="transactions-list"></div>
             </section>
         </main>
     </div>
     <footer>
         <div class="container">
-            <p>&copy; 2024 Finance Tracker. All rights reserved.</p>
+            <p>&copy; 2024 🔎SpendMonitor. All rights reserved.</p>
+            <p>&copy; DESIGNED AND DEVELOPED BY <a href="https://github.com/cdJohnEl" target="_blank">JOHN CHIMDIKE EZEKIEL</a></p>
         </div>
     </footer>
     <script src="{{ url_for('static', filename='js/scripts.js') }}"></script>

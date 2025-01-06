@@ -3,9 +3,9 @@ document.addEventListener('DOMContentLoaded', function() {
     const resultSection = document.getElementById('result-section');
     const scanResult = document.getElementById('scan-result');
     const saveButton = document.getElementById('save-button');
-    const receiptsList = document.getElementById('receipts-list');
+    const transactionsList = document.getElementById('transactions-list');
+    const transactionType = document.getElementById('transaction-type');
     
-    // Store the current receipt data
     let currentReceiptData = null;
 
     uploadForm.addEventListener('submit', function(e) {
@@ -20,7 +20,7 @@ document.addEventListener('DOMContentLoaded', function() {
         })
         .then(response => response.json())
         .then(data => {
-            currentReceiptData = data.result; // Store the receipt data
+            currentReceiptData = data.result;
             displayReceiptData(data.result);
             resultSection.style.display = 'block';
         })
@@ -42,56 +42,73 @@ document.addEventListener('DOMContentLoaded', function() {
             return;
         }
 
+        if (!transactionType.value) {
+            alert('Please select a transaction type.');
+            return;
+        }
+
+        // Ensure we have a valid amount
+        let amount = currentReceiptData.Amount;
+        if (amount === 'N/A' || amount === undefined) {
+            amount = 0;
+        }
+        
+        const transactionData = {
+            ...currentReceiptData,
+            Amount: amount,
+            transaction_type: transactionType.value
+        };
+
         fetch('/save', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
             },
-            body: JSON.stringify(currentReceiptData)
+            body: JSON.stringify(transactionData)
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error('Network response was not ok');
+            }
+            return response.json();
+        })
         .then(data => {
             alert(data.message);
-            loadReceipts();
-            // Clear the current receipt data after successful save
+            loadTransactions();
+            // Reset form
             currentReceiptData = null;
             resultSection.style.display = 'none';
             uploadForm.reset();
+            transactionType.value = '';
         })
         .catch(error => {
             console.error('Error:', error);
-            alert('Failed to save receipt. Please try again.');
+            alert('Failed to save transaction. Please try again.');
         });
     });
 
-    function loadReceipts() {
-        fetch('/get_receipts')
+    function loadTransactions() {
+        fetch('/get_transactions')
         .then(response => response.json())
         .then(data => {
-            receiptsList.innerHTML = '';
-            for (const [month, receipts] of Object.entries(data)) {
-                const monthElement = document.createElement('div');
-                monthElement.className = 'month-section';
-                monthElement.innerHTML = `<h4>${month}</h4>`;
-                
-                for (const [date, receipt] of Object.entries(receipts)) {
-                    const receiptElement = document.createElement('div');
-                    receiptElement.className = 'receipt-item';
-                    let receiptHtml = `<div class="receipt-header">Date: ${new Date(date).toLocaleString()}</div>`;
-                    receiptHtml += '<div class="receipt-details">';
-                    for (const [key, value] of Object.entries(receipt)) {
-                        receiptHtml += `<div><strong>${key}:</strong> ${value}</div>`;
-                    }
-                    receiptHtml += '</div>';
-                    receiptElement.innerHTML = receiptHtml;
-                    monthElement.appendChild(receiptElement);
-                }
-                receiptsList.appendChild(monthElement);
-            }
+            transactionsList.innerHTML = '';
+            data.forEach(transaction => {
+                const transactionElement = document.createElement('div');
+                transactionElement.className = 'transaction-item';
+                transactionElement.innerHTML = `
+                    <div class="transaction-header">
+                        <span class="transaction-type ${transaction.type}">${transaction.type}</span>
+                        <span class="transaction-amount">₦${transaction.amount.toFixed(2)}</span>
+                    </div>
+                    <div class="transaction-date">${new Date(transaction.date).toLocaleString()}</div>
+                    <div class="transaction-details">${JSON.stringify(transaction.details)}</div>
+                `;
+                transactionsList.appendChild(transactionElement);
+            });
         })
         .catch(error => console.error('Error:', error));
     }
 
-    loadReceipts();
+    loadTransactions();
 });
 

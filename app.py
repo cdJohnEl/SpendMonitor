@@ -1,4 +1,4 @@
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, send_file
 from flask_bcrypt import Bcrypt
 from firebase_admin import credentials, firestore, initialize_app
 import google.generativeai as genai
@@ -8,14 +8,14 @@ from PIL import Image
 import io
 import re
 from dotenv import load_dotenv
-
-
+from functools import wraps
+import csv
 
 # Load environment variables from .env file
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.getenv('SECRET_KEY') 
+app.secret_key = os.getenv('SECRET_KEY')
 bcrypt = Bcrypt(app)
 
 # Initialize Firebase
@@ -27,6 +27,14 @@ db = firestore.client()
 # Configure Gemini
 genai.configure(api_key=os.getenv('GEMINI_API_KEY'))
 model = genai.GenerativeModel(model_name="gemini-1.5-pro")
+
+def login_required(f):
+    @wraps(f)
+    def decorated_function(*args, **kwargs):
+        if 'user' not in session:
+            return redirect(url_for('login'))
+        return f(*args, **kwargs)
+    return decorated_function
 
 @app.route('/')
 def index():
@@ -68,115 +76,56 @@ def login():
     return render_template('login.html')
 
 @app.route('/dashboard')
+@login_required
 def dashboard():
-    if 'user' not in session:
-        return redirect(url_for('login'))
-    return render_template('dashboard.html')
+    user_email = session['user']
+    user_ref = db.collection('users').document(user_email)
+    
+    # Get total income and expenses
+    income = user_ref.collection('transactions').where('type', '==', 'income').get()
+    expenses = user_ref.collection('transactions').where('type', '==', 'expense').get()
+    
+    total_income = sum(doc.to_dict()['amount'] for doc in income)
+    total_expenses = sum(doc.to_dict()['amount'] for doc in expenses)
+    balance = total_income - total_expenses
+    
+    return render_template('dashboard.html', balance=balance, total_income=total_income, total_expenses=total_expenses)
 
 def parse_receipt_data(text):
-    data = {}
-    
-    # Clean up the text first - remove any ** markers
-    text = text.replace('**', '')
-    
     patterns = {
-        'Amount': r'₦([\d,]+\.\d{2})',  # Matches ₦5,000.00
-        'Date': r'(\w+ \d{2},?\d{4})',  # Matches Nov 09,2024
-        'Time': r'(\d{2}:\d{2})',  # Matches 08:56
-        'Transaction type': r'Transaction Type:?\s*([^\n]+)',  # Matches "Transfer to bank"
-        'Recipient details': r'PAYSTACK[^\n]*(?:\n[^S\n]*)*',  # Matches PAYSTACK lines until Sender
-        'Sender details': r'CHIMDIKE[^\n]*',  # Matches the sender name and details
-        'Transaction Reference': r'Transaction Reference\s*(\d+)',
-        'SessionID': r'SessionID\s*(\d+)'
+        'Amount': r'₦([\d,]+\.\d{2})',
+        'Date': r'Date\s*:\s*(\d{2}/\d{2}/\d{4})',
+        'Time': r'Time\s*:\s*(\d{2}:\d{2})',
+        'Transaction type': r'Transaction type\s*:\s*(.+)',
+        'Recipient details': r'recipient details\s*:\s*(.+)',
+        'Sender details': r'Sender details\s*:\s*(.+)',
+        'Remarks': r'remarks\s*:\s*(.+)',
+
     }
     
+    data = {}
+    for key, pattern in patterns.items():
+        match = re.search(pattern, text, re.IGNORECASE)
+        if match:
+            data[key] = match.group(1).strip()
+        else:
+            data[key] = ''
+
     # Extract amount
     amount_match = re.search(patterns['Amount'], text)
     if amount_match:
         amount = amount_match.group(1)
-        data['Amount'] = float(amount.replace(',', ''))
+        try:
+            data['Amount'] = float(amount.replace(',', ''))
+        except ValueError:
+            data['Amount'] = 0.0
     else:
-        data['Amount'] = 'N/A'
-    
-    # Extract date and time
-    date_match = re.search(patterns['Date'], text)
-    time_match = re.search(patterns['Time'], text)
-    data['Date'] = date_match.group(1) if date_match else 'N/A'
-    data['Time'] = time_match.group(1) if time_match else 'N/A'
-    
-    # Extract transaction type
-    trans_type_match = re.search(patterns['Transaction type'], text, re.IGNORECASE)
-    data['Transaction type'] = trans_type_match.group(1).strip() if trans_type_match else 'N/A'
-    
-    # Extract recipient details
-    recipient_match = re.search(patterns['Recipient details'], text)
-    if recipient_match:
-        recipient = recipient_match.group(0)
-        # Clean up and format recipient details
-        recipient_lines = [line.strip() for line in recipient.split('\n') if line.strip()]
-        data['Recipient details'] = ' | '.join(recipient_lines)
-    else:
-        data['Recipient details'] = 'N/A'
-    
-    # Extract sender details
-    sender_match = re.search(patterns['Sender details'], text)
-    if sender_match:
-        sender = sender_match.group(0)
-        # Clean up sender details
-        data['Sender details'] = sender.strip()
-    else:
-        data['Sender details'] = 'N/A'
-    
-    # Extract reference numbers
-    ref_match = re.search(patterns['Transaction Reference'], text)
-    session_match = re.search(patterns['SessionID'], text)
-    data['Transaction Reference'] = ref_match.group(1) if ref_match else 'N/A'
-    data['SessionID'] = session_match.group(1) if session_match else 'N/A'
-    
+        data['Amount'] = 0.0
     return data
 
-def login_required(f):
-    @wraps(f)
-    def decorated_function(*args, **kwargs):
-        if 'user' not in session:
-            return redirect(url_for('login'))
-        return f(*args, **kwargs)
-    return decorated_function
-
-@app.route('/google-auth', methods=['POST'])
-def google_auth():
-    data = request.json
-    try:
-        # Verify the Firebase ID token
-        decoded_token = auth.verify_id_token(data['token'])
-        uid = decoded_token['uid']
-        
-        # Get or create user in Firestore
-        user_ref = db.collection('users').document(uid)
-        user_ref.set({
-            'email': data['email'],
-            'name': data['displayName'],
-            'last_login': datetime.now().isoformat()
-        }, merge=True)
-        
-        # Set session
-        session['user'] = data['email']
-        session['uid'] = uid
-        
-        return jsonify({'success': True})
-    except Exception as e:
-        print(f"Error in google_auth: {e}")
-        return jsonify({'success': False, 'error': str(e)}), 400
-
-
-
-
-
 @app.route('/upload', methods=['POST'])
+@login_required
 def upload_receipt():
-    if 'user' not in session:
-        return jsonify({"error": "Unauthorized"}), 401
-    
     if 'file' not in request.files:
         return jsonify({"error": "No file part"}), 400
     
@@ -189,40 +138,81 @@ def upload_receipt():
         prompt = "The Image is a receipt. Please extract the following information: \n\n Amount, Date, Time, Transaction type, recipient details, and Sender details and remarks if any. \n\n"
         response = model.generate_content([prompt, image])
         parsed_data = parse_receipt_data(response.text)
-        print(parsed_data)
         return jsonify({"result": parsed_data})
 
 @app.route('/save', methods=['POST'])
+@login_required
 def save_receipt():
-    if 'user' not in session:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    data = request.json
-    user_email = session['user']
-    current_date = datetime.now()
-    month_year = current_date.strftime("%B_%Y")
-    
-    receipts_ref = db.collection('users').document(user_email).collection('receipts').document(month_year)
-    receipts_ref.set({
-        current_date.isoformat(): data
-    }, merge=True)
-    
-    return jsonify({"message": "Receipt saved successfully"})
+    try:
+        data = request.json
+        user_email = session['user']
+        transaction_type = data.get('transaction_type')
+        
+        # Get amount from the receipt data
+        amount_str = str(data.get('Amount', '0'))
+        try:
+            # Remove currency symbol and commas, then convert to float
+            amount = float(amount_str.replace('₦', '').replace(',', ''))
+        except ValueError:
+            amount = 0.0
+        
+        if not transaction_type:
+            return jsonify({"error": "Missing transaction type"}), 400
+        
+        transaction_ref = db.collection('users').document(user_email).collection('transactions').document()
+        transaction_ref.set({
+            'type': transaction_type,
+            'amount': amount,
+            'date': datetime.now().isoformat(),
+            'details': data
+        })
+        
+        return jsonify({"message": "Transaction saved successfully"})
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
 
-@app.route('/get_receipts')
-def get_receipts():
-    if 'user' not in session:
-        return jsonify({"error": "Unauthorized"}), 401
-    
+@app.route('/get_transactions')
+@login_required
+def get_transactions():
     user_email = session['user']
-    receipts_ref = db.collection('users').document(user_email).collection('receipts')
-    receipts = receipts_ref.get()
+    transactions_ref = db.collection('users').document(user_email).collection('transactions')
+    transactions = transactions_ref.order_by('date', direction='DESCENDING').limit(10).get()
     
-    result = {}
-    for doc in receipts:
-        result[doc.id] = doc.to_dict()
+    result = []
+    for doc in transactions:
+        transaction = doc.to_dict()
+        transaction['id'] = doc.id
+        result.append(transaction)
     
     return jsonify(result)
+
+@app.route('/download_summary')
+@login_required
+def download_summary():
+    user_email = session['user']
+    transactions_ref = db.collection('users').document(user_email).collection('transactions')
+    transactions = transactions_ref.order_by('date').get()
+    
+    output = io.StringIO()
+    writer = csv.writer(output)
+    writer.writerow(['Date', 'Type', 'Amount', 'Details'])
+    
+    for doc in transactions:
+        transaction = doc.to_dict()
+        writer.writerow([
+            transaction['date'],
+            transaction['type'],
+            transaction['amount'],
+            str(transaction['details'])
+        ])
+    
+    output.seek(0)
+    return send_file(
+        io.BytesIO(output.getvalue().encode()),
+        mimetype='text/csv',
+        as_attachment=True,
+        download_name='finance_summary.csv'
+    )
 
 if __name__ == '__main__':
     app.run(debug=True)

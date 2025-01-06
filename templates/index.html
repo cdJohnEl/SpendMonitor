@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Finance Tracker</title>
+    <title>SpendMonitor</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&display=swap" rel="stylesheet">
 </head>
@@ -12,8 +12,8 @@
         <div class="container">
             <nav>
                 <div class="logo">
-                    <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Finance Tracker">
-                    Finance Tracker
+                    <!-- <img src="{{ url_for('static', filename='images/logo.png') }}" alt="Finance Tracker"> -->
+                    <h1>🔎SpendMonitor</h1>
                 </div>
                 <ul>
                     <li><a href="{{ url_for('index') }}">Home</a></li>
@@ -26,7 +26,7 @@
     <main>
         <div class="container">
             <section class="hero">
-                <h2>Welcome to Finance Tracker</h2>
+                <h2>Welcome to 🔎SpendMonitor</h2>
                 <p>Track your expenses easily by scanning your receipts!</p>
                 <a href="{{ url_for('signup') }}" class="btn btn-primary">Get Started</a>
             </section>
@@ -48,7 +48,8 @@
     </main>
     <footer>
         <div class="container">
-            <p>&copy; 2024 Finance Tracker. All rights reserved.</p>
+            <p>&copy; 2024 🔎SpendMonitor. All rights reserved.</p>
+            <p>&copy; DESIGNED AND DEVELOPED BY <a href="https://github.com/cdJohnEl" target="_blank">JOHN CHIMDIKE EZEKIEL</a></p>
         </div>
     </footer>
 </body>
